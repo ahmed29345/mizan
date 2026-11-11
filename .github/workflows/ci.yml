@@ -1,0 +1,54 @@
+# Runs on every push and pull request: lint, format check, then tests against a real Postgres.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # A "service container": GitHub starts this Postgres next to the job, like docker compose does locally.
+    services:
+      db:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: mizan
+          POSTGRES_PASSWORD: mizan
+          POSTGRES_DB: mizan
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mizan -d mizan"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://mizan:mizan@localhost:5432/mizan
+      ENVIRONMENT: ci
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies (exactly as locked)
+        run: uv sync --locked
+
+      - name: Enable pgvector
+        # Service containers can't mount init.sql, so enable the extension here instead.
+        run: PGPASSWORD=mizan psql -h localhost -U mizan -d mizan -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format check
+        run: uv run ruff format --check .
+
+      - name: Tests
+        run: uv run pytest

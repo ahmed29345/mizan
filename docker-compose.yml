@@ -1,0 +1,24 @@
+# Local development services. Start with:  docker compose up -d
+services:
+  db:
+    # Official Postgres 17 with the pgvector extension pre-built (used for embeddings from week 3).
+    image: pgvector/pgvector:pg17
+    container_name: mizan-db
+    environment:
+      POSTGRES_USER: mizan
+      POSTGRES_PASSWORD: mizan          # local-only password; real secrets never go in this file
+      POSTGRES_DB: mizan
+    ports:
+      - "5432:5432"                     # host:container — your Mac's 5432 forwards into the container
+    volumes:
+      - pgdata:/var/lib/postgresql/data # named volume: data survives `docker compose down`
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      # Docker marks the container "healthy" only when Postgres accepts connections.
+      test: ["CMD-SHELL", "pg_isready -U mizan -d mizan"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

@@ -1,0 +1,41 @@
+[project]
+name = "mizan"
+version = "0.1.0"
+description = "Arabic/English AI compliance copilot (learning project): RAG, multi-agent review, evaluation"
+readme = "README.md"
+authors = [
+    { name = "ahmed29345", email = "ahmed29345@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "asyncpg>=0.32.0",
+    "fastapi[standard]>=0.162.4",
+    "pydantic-settings>=2.16.2",
+    "sqlalchemy[asyncio]>=2.1.8",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.4",
+]
+
+[tool.fastapi]
+# Lets `uv run fastapi dev` find the app without typing the path.
+entrypoint = "mizan.main:app"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/F = errors, I = import order, UP = modern Python syntax, B = common bugs, ASYNC = async mistakes
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
