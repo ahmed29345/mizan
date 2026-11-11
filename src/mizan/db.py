@@ -5,7 +5,9 @@
 """
 
 from collections.abc import AsyncIterator
+from typing import Annotated
 
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from mizan.config import get_settings
@@ -16,9 +18,14 @@ SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:
-    """FastAPI dependency: `session: AsyncSession = Depends(get_session)`.
+    """FastAPI dependency that lends one session per request (use SessionDep below).
 
     Code before `yield` runs before the endpoint; the `async with` closes the session after it.
     """
     async with SessionLocal() as session:
         yield session
+
+
+# Reusable type for endpoints: `async def endpoint(session: SessionDep)`.
+# Annotated[Type, Depends(...)] = "this parameter is an AsyncSession, and FastAPI provides it".
+SessionDep = Annotated[AsyncSession, Depends(get_session)]

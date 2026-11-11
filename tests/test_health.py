@@ -1,34 +1,51 @@
 """Tests for GET /health.
 
-============================ YOUR TASK (week 1) ============================
-
 pytest runs every function whose name starts with `test_`.
-`client` is a fixture from tests/conftest.py: add it as a parameter and pytest passes it in.
-
-1. test_health_ok(client)
-     - call   response = client.get("/health")
-     - assert response.status_code == 200
-     - assert response.json() == {"status": "ok", "database": "ok"}
-     (needs the database running:  docker compose up -d)
-
-2. Stretch: test_health_db_down(client)
-     Simulate a dead database WITHOUT stopping Docker, using FastAPI dependency overrides:
-         from mizan.db import get_session
-         from mizan.main import app
-
-         class BrokenSession:
-             async def execute(self, *args, **kwargs):
-                 raise ConnectionError("db down")
-
-         async def broken_session():
-             yield BrokenSession()
-
-         app.dependency_overrides[get_session] = broken_session
-         ... call /health, assert 503 ...
-         app.dependency_overrides.clear()     # always clean up, or other tests break
-
-     This is the same trick you'll use later to replace the real LLM with a fake one in tests.
-============================================================================
+`client` comes from tests/conftest.py: naming it as a parameter makes pytest pass it in.
 """
 
-# TODO(you): write test_health_ok here.
+from collections.abc import AsyncIterator, Iterator
+
+import pytest
+from fastapi.testclient import TestClient
+
+from mizan.db import get_session
+from mizan.main import app
+
+
+def test_health_ok(client: TestClient) -> None:
+    # Uses the real Postgres (docker compose locally, the service container in CI).
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "database": "ok"}
+
+
+# ---- Simulating a dead database without stopping Docker ----------------------------------
+
+
+class BrokenSession:
+    """A fake session: same `execute` method as the real one, but it always fails."""
+
+    async def execute(self, *args: object, **kwargs: object) -> None:
+        raise ConnectionError("db down")
+
+
+async def broken_session() -> AsyncIterator[BrokenSession]:
+    yield BrokenSession()
+
+
+@pytest.fixture
+def database_down() -> Iterator[None]:
+    # dependency_overrides: "when an endpoint asks for get_session, call broken_session instead".
+    app.dependency_overrides[get_session] = broken_session
+    yield
+    # Code after `yield` runs even if the test fails, so the fake never leaks into other tests.
+    app.dependency_overrides.clear()
+
+
+def test_health_db_down(client: TestClient, database_down: None) -> None:
+    response = client.get("/health")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "degraded", "database": "unreachable"}
