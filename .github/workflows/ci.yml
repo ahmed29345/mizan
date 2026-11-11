@@ -44,6 +44,13 @@ jobs:
         # Service containers can't mount init.sql, so enable the extension here instead.
         run: PGPASSWORD=mizan psql -h localhost -U mizan -d mizan -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
+      - name: Apply database migrations
+        run: uv run alembic upgrade head
+
+      - name: Models and migrations match
+        # Fails if someone changed a model but forgot to generate a migration.
+        run: uv run alembic check
+
       - name: Lint
         run: uv run ruff check .
 
