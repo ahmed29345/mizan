@@ -1,0 +1,74 @@
+{
+  "_note": "FICTIONAL sample data for development and tests. Not real regulatory text. Do not cite.",
+  "regulations": [
+    {
+      "code": "DEMO-SAMA-CSF",
+      "authority": "SAMA",
+      "title_en": "Cyber Security Framework for Banks (fictional example)",
+      "title_ar": "إطار الأمن السيبراني للبنوك (مثال افتراضي)",
+      "version": "1.0",
+      "status": "active",
+      "effective_date": "2025-01-01",
+      "articles": [
+        {"article_number": "1.1", "language": "en", "position": 1, "heading": "Scope",
+         "body": "This framework applies to all licensed banks operating in the Kingdom. It sets the minimum controls for protecting information assets."},
+        {"article_number": "1.1", "language": "ar", "position": 1, "heading": "النطاق",
+         "body": "ينطبق هذا الإطار على جميع البنوك المرخصة العاملة في المملكة، ويحدد الحد الأدنى من الضوابط لحماية الأصول المعلوماتية."},
+        {"article_number": "2.1", "language": "en", "position": 2, "heading": "Governance",
+         "body": "The board shall approve a cyber security strategy and appoint a Chief Information Security Officer who reports independently of the IT function."},
+        {"article_number": "2.1", "language": "ar", "position": 2, "heading": "الحوكمة",
+         "body": "يعتمد مجلس الإدارة استراتيجية للأمن السيبراني، ويعيّن رئيساً لأمن المعلومات يرفع تقاريره بشكل مستقل عن إدارة تقنية المعلومات."},
+        {"article_number": "3.2", "language": "en", "position": 3, "heading": "Incident reporting",
+         "body": "Significant cyber incidents shall be reported to the regulator within 24 hours of detection, followed by a root-cause report within 30 days."},
+        {"article_number": "3.2", "language": "ar", "position": 3, "heading": "الإبلاغ عن الحوادث",
+         "body": "يجب إبلاغ الجهة الرقابية بالحوادث السيبرانية الجوهرية خلال ٢٤ ساعة من اكتشافها، على أن يتبع ذلك تقرير بالأسباب الجذرية خلال ٣٠ يوماً."}
+      ]
+    },
+    {
+      "code": "DEMO-ZATCA-EINV",
+      "authority": "ZATCA",
+      "title_en": "E-Invoicing Requirements (fictional example)",
+      "title_ar": "متطلبات الفوترة الإلكترونية (مثال افتراضي)",
+      "version": "2.0",
+      "status": "active",
+      "effective_date": "2024-06-01",
+      "articles": [
+        {"article_number": "1", "language": "en", "position": 1, "heading": "Scope",
+         "body": "These requirements apply to all VAT-registered taxpayers that issue tax invoices or simplified tax invoices."},
+        {"article_number": "1", "language": "ar", "position": 1, "heading": "النطاق",
+         "body": "تنطبق هذه المتطلبات على جميع المكلفين المسجلين في ضريبة القيمة المضافة الذين يصدرون فواتير ضريبية أو فواتير ضريبية مبسطة."},
+        {"article_number": "4", "language": "en", "position": 2, "heading": "Invoice content",
+         "body": "A tax invoice shall include the seller's VAT number, a unique sequential invoice number, the issue date and a QR code."},
+        {"article_number": "4", "language": "ar", "position": 2, "heading": "محتوى الفاتورة",
+         "body": "يجب أن تتضمن الفاتورة الضريبية الرقم الضريبي للبائع، ورقماً تسلسلياً فريداً للفاتورة، وتاريخ الإصدار، ورمز الاستجابة السريعة."},
+        {"article_number": "7", "language": "en", "position": 3, "heading": "Record retention",
+         "body": "Electronic invoices shall be retained for at least six years in a format that cannot be altered."},
+        {"article_number": "7", "language": "ar", "position": 3, "heading": "حفظ السجلات",
+         "body": "يجب الاحتفاظ بالفواتير الإلكترونية لمدة لا تقل عن ست سنوات بصيغة لا تقبل التعديل."}
+      ]
+    },
+    {
+      "code": "DEMO-PDPL",
+      "authority": "SDAIA",
+      "title_en": "Personal Data Protection Rules (fictional example)",
+      "title_ar": "قواعد حماية البيانات الشخصية (مثال افتراضي)",
+      "version": "1.0",
+      "status": "active",
+      "effective_date": "2024-09-14",
+      "articles": [
+        {"article_number": "5", "language": "en", "position": 1, "heading": "Consent",
+         "body": "Personal data may only be processed with the data subject's consent, unless another legal basis applies."},
+        {"article_number": "5", "language": "ar", "position": 1, "heading": "الموافقة",
+         "body": "لا يجوز معالجة البيانات الشخصية إلا بموافقة صاحبها، ما لم يوجد أساس نظامي آخر."},
+        {"article_number": "12", "language": "en", "position": 2, "heading": "Data minimisation",
+         "body": "The controller shall collect only the personal data that is necessary for the stated purpose."},
+        {"article_number": "12", "language": "ar", "position": 2, "heading": "الحد الأدنى من البيانات",
+         "body": "يلتزم المتحكم بجمع الحد الأدنى من البيانات الشخصية اللازمة لتحقيق الغرض المحدد."},
+        {"article_number": "29", "language": "en", "position": 3, "heading": "Cross-border transfer",
+         "body": "Personal data shall not be transferred outside the Kingdom except in the cases and under the conditions set out in these rules."},
+        {"article_number": "29", "language": "ar", "position": 3, "heading": "النقل خارج المملكة",
+         "body": "لا يجوز نقل البيانات الشخصية خارج المملكة إلا في الحالات وبالشروط المنصوص عليها في هذه القواعد."}
+      ]
+    }
+  ]
+}

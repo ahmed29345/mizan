@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from mizan.api import health
+from mizan.api import health, regulations
 from mizan.db import engine
 
 
@@ -19,3 +19,4 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="Mizan", version="0.1.0", lifespan=lifespan)
 app.include_router(health.router)
+app.include_router(regulations.router)

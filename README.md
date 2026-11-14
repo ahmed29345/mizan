@@ -14,6 +14,7 @@ docker compose up -d                 # Postgres 17 + pgvector
 cp .env.example .env                 # first time only
 uv sync                              # install dependencies
 uv run alembic upgrade head          # create / update tables
+uv run python -m mizan.seed          # load fictional sample regulations (safe to re-run)
 uv run fastapi dev                   # http://127.0.0.1:8000/docs
 uv run pytest                        # tests
 uv run ruff check . && uv run ruff format .

@@ -2,12 +2,14 @@
 
 from collections.abc import AsyncIterator, Iterator
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from mizan.config import get_settings
+from mizan.db import get_session
 from mizan.main import app
 
 
@@ -48,3 +50,22 @@ async def db_session() -> AsyncIterator[AsyncSession]:
             await session.close()
             await transaction.rollback()
     await engine.dispose()
+
+
+@pytest.fixture
+async def api(db_session: AsyncSession) -> AsyncIterator[httpx.AsyncClient]:
+    """Async HTTP client for API tests whose database writes are rolled back.
+
+    The app's get_session is overridden with the rollback-only db_session, so an endpoint
+    that commits still leaves nothing behind. httpx.AsyncClient (not TestClient) keeps the
+    request on the same event loop as db_session.
+    """
+
+    async def override_session() -> AsyncIterator[AsyncSession]:
+        yield db_session
+
+    app.dependency_overrides[get_session] = override_session
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
+    app.dependency_overrides.clear()
