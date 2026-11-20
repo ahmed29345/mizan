@@ -18,6 +18,9 @@ from mizan.rag.embeddings import Embedder
 from mizan.services.regulations import RegulationNotFoundError, get_regulation
 from mizan.services.search import search_chunks
 
+# How many chunks one search returns to the LLM. The retrieval eval measures this same number.
+SEARCH_K = 6
+
 
 @dataclass
 class RetrievalLog:
@@ -46,7 +49,7 @@ def build_tools(session: AsyncSession, embedder: Embedder, log: RetrievalLog) ->
         # arguments with guesses (e.g. authority="SAMA" for a data-protection question),
         # which silently hides the right answer. Fewer arguments = fewer wrong guesses.
         async with db_lock:
-            hits = await search_chunks(session, embedder, query, k=6)
+            hits = await search_chunks(session, embedder, query, k=SEARCH_K)
         if not hits:
             return "No matching articles found."
         lines = []

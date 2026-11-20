@@ -21,3 +21,6 @@ htmlcov/
 # Local data
 data/raw/
 *.sqlite3
+
+# Evaluation run outputs (large, machine-specific)
+data/eval/results/

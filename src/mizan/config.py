@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     # Chat LLM for the agent (week 2). Local via Ollama; swap for a hosted model later.
     llm_model: str = "qwen3:8b"
     agent_max_steps: int = 6  # max LLM turns per question: stops runaway tool loops (and cost)
+    # LLM-as-judge for evaluations. Thinking on: a judge must reason before deciding.
+    judge_model: str = "qwen3:8b"
 
 
 @lru_cache

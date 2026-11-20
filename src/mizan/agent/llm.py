@@ -23,3 +23,13 @@ def get_chat_model() -> BaseChatModel:
 
 
 ChatModelDep = Annotated[BaseChatModel, Depends(get_chat_model)]
+
+
+@lru_cache
+def get_judge_model() -> BaseChatModel:
+    """The evaluation judge. Thinking ON: a fast yes/no without reasoning proved unreliable
+    (it flagged near-verbatim quotes as unsupported). Slower is fine for offline evals."""
+    settings = get_settings()
+    return ChatOllama(
+        model=settings.judge_model, base_url=settings.ollama_url, temperature=0, reasoning=True
+    )
