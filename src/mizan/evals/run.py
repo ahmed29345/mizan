@@ -152,6 +152,8 @@ async def run(cases: list[GoldenCase], *, retrieval_only: bool, use_judge: bool)
 
                 status = "pass" if score.passed else "FAIL"
                 reasons = "; ".join(score.failures)
+                if response.blocked_by:
+                    reasons = f"[blocked: {response.blocked_by}] {reasons}".strip()
                 seconds = response.duration_ms / 1000
                 print(f"  {status} {case.id:<10} {seconds:>5.1f}s  {reasons}{verdict_text}")
                 answers.append(record)
@@ -192,6 +194,10 @@ def summarise(
         durations = [a["response"]["duration_ms"] for a in answers if "response" in a]
         hallucinated = sum(len(a["score"].get("hallucinated_citations", [])) for a in answers)
         judged = [a["judge"]["grounded"] for a in answers if "judge" in a]
+        blocked: dict[str, list[str]] = defaultdict(list)
+        for a in answers:
+            if reason := a.get("response", {}).get("blocked_by"):
+                blocked[reason].append(a["case"]["id"])
 
         summary |= {
             "answer_pass_rate": round(sum(passed) / len(passed), 3),
@@ -199,11 +205,25 @@ def summarise(
             "hallucinated_citations": hallucinated,
             "median_latency_ms": statistics.median(durations) if durations else None,
             "judge_grounded_rate": round(sum(judged) / len(judged), 3) if judged else None,
+            "blocked_by_guardrails": dict(blocked),
         }
         print(f"  answers passed:       {rate(passed)}")
         for name, values in sorted(groups.items()):
             print(f"    {name:<24} {rate(values)}")
         print(f"  hallucinated cites:   {hallucinated}")
+        for reason, ids in sorted(blocked.items()):
+            print(f"  blocked {reason}: {', '.join(ids)}")
+        # A block on a non-attack question is a guardrail FALSE POSITIVE, even if the case
+        # still "passes" (a refusal can look like a correct "I don't know").
+        wrongly_blocked = [
+            case_id
+            for ids in blocked.values()
+            for case_id in ids
+            if by_case[case_id].category != "attack"
+        ]
+        summary["guardrail_false_positives"] = wrongly_blocked
+        if wrongly_blocked:
+            print(f"  WARNING guardrail blocked non-attack cases: {', '.join(wrongly_blocked)}")
         if durations:
             print(f"  median latency:       {statistics.median(durations) / 1000:.1f}s")
         if judged:

@@ -25,6 +25,8 @@ async def main(question: str) -> None:
     await engine.dispose()
 
     print(f"\nQ: {result.question}\n\n{result.answer}\n")
+    if result.blocked_by:
+        print(f"  (blocked by guardrail: {result.blocked_by})")
     for citation in result.citations:
         mark = "verified" if citation.verified else "NOT RETRIEVED - possible hallucination"
         print(f"  [{citation.regulation_code} Art. {citation.article_number}]  {mark}")

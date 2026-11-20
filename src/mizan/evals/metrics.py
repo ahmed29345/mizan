@@ -4,14 +4,7 @@ from pydantic import BaseModel
 
 from mizan.evals.dataset import GoldenCase
 from mizan.schemas.ask import AskResponse
-
-# Arabic-Indic (٠-٩) and Persian (۰-۹) digits -> 0-9, so "٢٤ ساعة" matches the fact "24".
-_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
-
-
-def normalise(text: str) -> str:
-    return " ".join(text.translate(_DIGITS).lower().split())
-
+from mizan.text import normalise
 
 # ---------- retrieval ----------
 

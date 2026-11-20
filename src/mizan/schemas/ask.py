@@ -30,6 +30,9 @@ class AskResponse(BaseModel):
     answer: str
     citations: list[Citation]
     tool_calls: list[ToolCallLog]  # what the agent did, in order (transparency / audit)
+    # Set when a guardrail replaced the answer with a safe refusal, e.g.
+    # "input:prompt_injection", "output:ungrounded_numbers". None = answer passed all checks.
+    blocked_by: str | None = None
     model: str
     llm_turns: int
     duration_ms: int

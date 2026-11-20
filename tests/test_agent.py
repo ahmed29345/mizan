@@ -45,7 +45,7 @@ async def test_question_is_always_searched_before_the_llm_answers(
     assert result.llm_turns == 1
 
 
-async def test_citation_the_agent_never_retrieved_is_flagged(db_session: AsyncSession) -> None:
+async def test_answer_citing_an_unretrieved_article_is_blocked(db_session: AsyncSession) -> None:
     embedder = FakeEmbedder()
     await make_indexed_regulation(db_session, embedder)
     llm = ScriptedChatModel(replies=["Banks need 1 billion riyals [FAKE-REG Art. 9]."])
@@ -54,8 +54,10 @@ async def test_citation_the_agent_never_retrieved_is_flagged(db_session: AsyncSe
         QUESTION, session=db_session, embedder=embedder, llm=llm, max_steps=4
     )
 
-    assert result.citations[0].regulation_code == "FAKE-REG"
-    assert result.citations[0].verified is False  # hallucinated citation caught
+    # Fail closed: the hallucinated answer never reaches the user.
+    assert result.blocked_by == "output:unverified_citation"
+    assert "1 billion" not in result.answer
+    assert result.citations == []
 
 
 async def test_agent_recovers_from_a_tool_error(db_session: AsyncSession) -> None:

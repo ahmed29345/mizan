@@ -31,6 +31,7 @@ class RetrievalLog:
     """
 
     articles: set[tuple[str, str]] = field(default_factory=set)  # (code, article_number)
+    texts: list[str] = field(default_factory=list)  # the text the LLM saw (for guardrails)
 
 
 def build_tools(session: AsyncSession, embedder: Embedder, log: RetrievalLog) -> list[BaseTool]:
@@ -55,6 +56,7 @@ def build_tools(session: AsyncSession, embedder: Embedder, log: RetrievalLog) ->
         lines = []
         for hit in hits:
             log.articles.add((hit.regulation_code, hit.article_number))
+            log.texts.append(hit.content)
             heading = f" - {hit.heading}" if hit.heading else ""
             lines.append(
                 f"[{hit.regulation_code} Art. {hit.article_number}] ({hit.language.value}, "
@@ -83,6 +85,7 @@ def build_tools(session: AsyncSession, embedder: Embedder, log: RetrievalLog) ->
         for article in regulation.articles:
             if article.article_number == article_number and article.language.value == language:
                 log.articles.add((regulation.code, article.article_number))
+                log.texts.append(article.body)
                 return (
                     f"[{regulation.code} Art. {article.article_number}] "
                     f"{article.heading or ''}\n{article.body}"

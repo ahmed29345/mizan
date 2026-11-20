@@ -5,9 +5,10 @@ import json
 import pytest
 
 from mizan.evals.dataset import GoldenCase, load_golden
-from mizan.evals.metrics import normalise, score_answer, score_retrieval
+from mizan.evals.metrics import score_answer, score_retrieval
 from mizan.schemas.ask import AskResponse, Citation
 from mizan.seed import SEED_FILE
+from mizan.text import normalise
 
 
 def make_case(**overrides: object) -> GoldenCase:
