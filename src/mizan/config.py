@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     # LLM-as-judge for evaluations. Thinking on: a judge must reason before deciding.
     judge_model: str = "qwen3:8b"
 
+    # Tracing (Langfuse, self-hosted). Leave the keys empty to switch tracing off.
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: str | None = None
+    langfuse_host: str = "http://localhost:3000"
+
 
 @lru_cache
 def get_settings() -> Settings:

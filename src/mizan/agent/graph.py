@@ -45,6 +45,7 @@ from mizan.agent.guardrails import (
 )
 from mizan.agent.prompts import SYSTEM_PROMPT
 from mizan.agent.tools import RetrievalLog, build_tools
+from mizan.observability import Trace, trace
 from mizan.rag.embeddings import Embedder
 from mizan.schemas.ask import AskResponse, Citation, ToolCallLog
 
@@ -135,6 +136,26 @@ async def answer_question(
     embedder: Embedder,
     llm: BaseChatModel,
     max_steps: int,
+    tags: list[str] | None = None,
+) -> AskResponse:
+    """Answer one question. Every run is traced (when tracing is configured)."""
+    with trace("ask", as_type="agent", input=question, tags=["ask", *(tags or [])]) as run:
+        result = await _answer(question, session, embedder, llm, max_steps, run)
+        run.update(
+            output=result.answer,
+            metadata={"blocked_by": result.blocked_by, "llm_turns": result.llm_turns},
+            level="WARNING" if result.blocked_by else "DEFAULT",
+        )
+        return result.model_copy(update={"trace_id": run.trace_id})
+
+
+async def _answer(
+    question: str,
+    session: AsyncSession,
+    embedder: Embedder,
+    llm: BaseChatModel,
+    max_steps: int,
+    run: Trace,
 ) -> AskResponse:
     started = time.perf_counter()
     model_name = getattr(llm, "model", type(llm).__name__)
@@ -143,7 +164,15 @@ async def answer_question(
         return round((time.perf_counter() - started) * 1000)
 
     # Guardrail 1, BEFORE the LLM: an obvious injection never reaches the model at all.
-    if reason := check_input(question):
+    reason = check_input(question)
+    run.record(
+        "guardrail: input",
+        as_type="guardrail",
+        input=question,
+        output=reason or "passed",
+        warning=bool(reason),
+    )
+    if reason:
         logger.warning("Blocked input (%s): %r", reason, question[:200])
         blocked_by = f"input:{reason}"
         return AskResponse(
@@ -164,7 +193,8 @@ async def answer_question(
         # between them = 2N. So a limit of 2 * max_steps allows exactly max_steps LLM turns.
         final = await graph.ainvoke(
             {"messages": [HumanMessage(question)]},
-            config={"recursion_limit": max_steps * 2},
+            # callbacks: Langfuse records every node, tool call and LLM call of this run.
+            config={"recursion_limit": max_steps * 2, "callbacks": run.callbacks},
         )
     except GraphRecursionError as error:
         raise AgentStepLimitError(f"No answer within {max_steps} LLM turns") from error
@@ -175,6 +205,15 @@ async def answer_question(
 
     # Guardrails 2 + 3, AFTER the LLM: the model's answer must pass before a user sees it.
     blocked_by = check_output(answer, citations, log, question)
+    # The trace keeps the ORIGINAL answer even when blocked: reviewers need to see what
+    # the model tried to say. (Access to traces must be restricted like any audit log.)
+    run.record(
+        "guardrail: output",
+        as_type="guardrail",
+        input=answer,
+        output=blocked_by or "passed",
+        warning=bool(blocked_by),
+    )
     if blocked_by:
         # Fail closed. The original answer goes to the server log (for review), not the user.
         logger.warning("Blocked answer (%s): %r", blocked_by, answer[:500])

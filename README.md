@@ -28,5 +28,19 @@ Ask the agent over HTTP: `POST /ask` with `{"question": "..."}` (try it at /docs
 
 Try semantic search: http://127.0.0.1:8000/search?q=How%20fast%20must%20a%20bank%20report%20a%20hack
 
+## Observability (optional): Langfuse traces
+
+Every agent run can be recorded as a trace: each step, prompt, answer, tool call, guardrail
+verdict, token count and timing. Langfuse runs locally in Docker, so nothing leaves the machine.
+
+```bash
+cp .env.langfuse.example .env.langfuse        # first time: fill in random secrets
+docker compose -f docker-compose.langfuse.yml --env-file .env.langfuse up -d
+# put the same LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY in .env, then use the app as usual
+```
+
+Open http://localhost:3000 (login: LANGFUSE_ADMIN_EMAIL / LANGFUSE_ADMIN_PASSWORD from
+.env.langfuse). Tracing switches off automatically when the keys are empty (tests, CI).
+
 After changing a model: `uv run alembic revision --autogenerate -m "describe change"`, read the
 generated file in `migrations/versions/`, then `uv run alembic upgrade head`.

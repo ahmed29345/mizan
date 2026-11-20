@@ -18,6 +18,7 @@ from pathlib import Path
 from mizan.agent.llm import get_chat_model
 from mizan.db import SessionLocal, engine
 from mizan.models import Case
+from mizan.observability import flush
 from mizan.review.checkpointer import postgres_checkpointer
 from mizan.review.graph import build_review_graph
 from mizan.schemas.case import CaseCreate, DecisionRequest
@@ -59,6 +60,7 @@ async def main(args: argparse.Namespace, new_case: CaseCreate | None) -> None:
         if case.status == "awaiting_approval":
             print(f"\nNext: uv run python -m mizan.review_cli decide {case.id} approve")
     await engine.dispose()
+    flush()  # send buffered traces before the process exits
 
 
 if __name__ == "__main__":

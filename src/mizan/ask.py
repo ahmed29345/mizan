@@ -10,6 +10,7 @@ from mizan.agent.graph import answer_question
 from mizan.agent.llm import get_chat_model
 from mizan.config import get_settings
 from mizan.db import SessionLocal, engine
+from mizan.observability import flush
 from mizan.rag.embeddings import get_embedder
 
 
@@ -23,6 +24,7 @@ async def main(question: str) -> None:
             max_steps=get_settings().agent_max_steps,
         )
     await engine.dispose()
+    flush()  # send buffered traces before the process exits
 
     print(f"\nQ: {result.question}\n\n{result.answer}\n")
     if result.blocked_by:

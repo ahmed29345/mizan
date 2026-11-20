@@ -36,3 +36,6 @@ class AskResponse(BaseModel):
     model: str
     llm_turns: int
     duration_ms: int
+    # Langfuse trace of this run (None when tracing is off). Quote it when reporting a bad
+    # answer: it leads straight to every prompt, tool call and guardrail decision.
+    trace_id: str | None = None

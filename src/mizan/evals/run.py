@@ -33,6 +33,8 @@ from mizan.evals.dataset import GOLDEN_FILE, GoldenCase, load_golden
 from mizan.evals.judge import judge_groundedness
 from mizan.evals.metrics import AnswerScore, RetrievalScore, score_answer, score_retrieval
 from mizan.models import Chunk
+from mizan.observability import flush
+from mizan.observability import score as score_trace
 from mizan.rag.embeddings import Embedder, get_embedder
 from mizan.services.regulations import RegulationNotFoundError, get_regulation
 from mizan.services.search import search_chunks
@@ -119,6 +121,7 @@ async def run(cases: list[GoldenCase], *, retrieval_only: bool, use_judge: bool)
                         embedder=embedder,
                         llm=llm,
                         max_steps=settings.agent_max_steps,
+                        tags=["eval", case.id],  # filter eval traces in Langfuse
                     )
                 except AgentStepLimitError:
                     print(f"  FAIL {case.id:<10} step limit reached")
@@ -127,6 +130,14 @@ async def run(cases: list[GoldenCase], *, retrieval_only: bool, use_judge: bool)
                     continue
 
                 score: AnswerScore = score_answer(case, response)
+                # The eval verdict becomes a score ON the trace: filter failures in Langfuse
+                # and open exactly what the agent did for each one.
+                score_trace(
+                    response.trace_id,
+                    "eval_passed",
+                    1.0 if score.passed else 0.0,
+                    comment="; ".join(score.failures) or None,
+                )
                 record |= {
                     "response": response.model_dump(mode="json"),
                     "score": score.model_dump(),
@@ -159,6 +170,7 @@ async def run(cases: list[GoldenCase], *, retrieval_only: bool, use_judge: bool)
                 answers.append(record)
 
     await engine.dispose()
+    flush()  # send buffered traces and scores before the process exits
     return summarise(cases, retrieval, answers, settings_snapshot=settings.model_dump())
 
 

@@ -19,6 +19,9 @@ from mizan.config import Settings, get_settings
 _dev_url = make_url(Settings().database_url)  # from .env locally, env vars in CI
 TEST_DATABASE_URL = _dev_url.set(database=f"{_dev_url.database}_test")
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL.render_as_string(hide_password=False)
+# Tests never send traces, even if .env has Langfuse keys (empty keys = tracing off).
+os.environ["LANGFUSE_PUBLIC_KEY"] = ""
+os.environ["LANGFUSE_SECRET_KEY"] = ""
 get_settings.cache_clear()  # forget any settings read before the override
 
 # ---- 2. Normal imports (these read the overridden DATABASE_URL) ----

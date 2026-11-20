@@ -12,6 +12,7 @@ htmlcov/
 .env
 .env.*
 !.env.example
+!.env.langfuse.example
 
 # Editors / OS
 .DS_Store

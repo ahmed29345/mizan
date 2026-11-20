@@ -14,6 +14,7 @@ from langgraph.types import Command
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mizan.models import Case, CaseStatus, Language
+from mizan.observability import Trace, trace
 from mizan.review.graph import AREAS, Rules
 from mizan.schemas.case import CaseCreate, DecisionRequest
 from mizan.services.regulations import get_regulation
@@ -27,9 +28,10 @@ class InvalidCaseStateError(Exception):
     """E.g. approving a case that is not waiting for approval."""
 
 
-def _graph_config(case: Case) -> dict[str, Any]:
-    # thread_id links this case to its saved graph state in the checkpointer.
-    return {"configurable": {"thread_id": str(case.id)}}
+def _graph_config(case: Case, run: Trace) -> dict[str, Any]:
+    # thread_id links this case to its saved graph state in the checkpointer;
+    # callbacks record every agent's LLM call in the trace.
+    return {"configurable": {"thread_id": str(case.id)}, "callbacks": run.callbacks}
 
 
 async def create_case(session: AsyncSession, data: CaseCreate) -> Case:
@@ -63,7 +65,7 @@ async def load_rules(session: AsyncSession) -> dict[str, Rules]:
 
 
 async def _sync_from_graph(session: AsyncSession, case: Case, graph: CompiledStateGraph) -> Case:
-    snapshot = await graph.aget_state(_graph_config(case))
+    snapshot = await graph.aget_state({"configurable": {"thread_id": str(case.id)}})
     values = snapshot.values
     case.report = values.get("report")
     case.revision = (case.report or {}).get("revision", 0)
@@ -83,12 +85,24 @@ async def start_review(
     case = await get_case(session, case_id)
     if case.status != CaseStatus.DRAFT:
         raise InvalidCaseStateError(f"Case is {case.status}; only draft cases can be reviewed")
-    # Runs reader -> 3 checkers -> writer, then STOPS at human_review (interrupt).
-    await graph.ainvoke(
-        {"title": case.title, "documents": case.documents, "rules": await load_rules(session)},
-        _graph_config(case),
-    )
-    return await _sync_from_graph(session, case, graph)
+    rules = await load_rules(session)
+    # session_id = case id: the review, any returns and the approval appear together in
+    # Langfuse as one session, even though they happen in separate requests (or days).
+    with trace(
+        "case_review",
+        as_type="agent",
+        input={"title": case.title},
+        session_id=str(case.id),
+        tags=["review"],
+    ) as run:
+        # Runs reader -> 3 checkers -> writer, then STOPS at human_review (interrupt).
+        await graph.ainvoke(
+            {"title": case.title, "documents": case.documents, "rules": rules},
+            _graph_config(case, run),
+        )
+        case = await _sync_from_graph(session, case, graph)
+        run.update(output={"status": case.status, "risk": (case.report or {}).get("risk_level")})
+    return case
 
 
 async def decide(
@@ -100,7 +114,16 @@ async def decide(
     case = await get_case(session, case_id)
     if case.status != CaseStatus.AWAITING_APPROVAL:
         raise InvalidCaseStateError(f"Case is {case.status}; nothing is waiting for a decision")
-    # Command(resume=...) continues the paused graph; interrupt() returns this value.
-    # approve -> END.  return -> the writer revises with the comment -> pauses again.
-    await graph.ainvoke(Command(resume=decision.model_dump()), _graph_config(case))
-    return await _sync_from_graph(session, case, graph)
+    with trace(
+        f"case_{decision.decision}",
+        as_type="agent",
+        input=decision.model_dump(),
+        session_id=str(case.id),
+        tags=["review", "human-decision"],
+    ) as run:
+        # Command(resume=...) continues the paused graph; interrupt() returns this value.
+        # approve -> END.  return -> the writer revises with the comment -> pauses again.
+        await graph.ainvoke(Command(resume=decision.model_dump()), _graph_config(case, run))
+        case = await _sync_from_graph(session, case, graph)
+        run.update(output={"status": case.status, "revision": case.revision})
+    return case
