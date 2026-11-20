@@ -28,6 +28,18 @@ Ask the agent over HTTP: `POST /ask` with `{"question": "..."}` (try it at /docs
 
 Try semantic search: http://127.0.0.1:8000/search?q=How%20fast%20must%20a%20bank%20report%20a%20hack
 
+## Web UI (for demos)
+
+```bash
+uv run fastapi dev --port 8001     # then open http://127.0.0.1:8001  (redirects to /ui/)
+```
+
+Four screens: **Ask the rules** (chat with clickable citations and a "behind the scenes"
+panel), **Regulation library** (English/Arabic side by side, semantic search), **Case review**
+(run the five-agent review, approve or return it) and **AI quality** (latest full evaluation).
+The EN/عربي switch flips the layout right-to-left. Direct links: `/ui/?lang=ar#library`,
+`/ui/#review/<case-id>`. The UI is plain HTML/CSS/JS in `src/mizan/web/`, served by FastAPI.
+
 ## Run the API in Docker (production image)
 
 ```bash

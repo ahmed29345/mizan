@@ -5,18 +5,21 @@ The `cases` table owns the BUSINESS RECORD (status, latest report, decision) for
 searching and audit. After every graph run we copy the graph's result into the table.
 """
 
+import json
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mizan.models import Case, CaseStatus, Language
 from mizan.observability import Trace, trace
 from mizan.review.graph import AREAS, Rules
-from mizan.schemas.case import CaseCreate, DecisionRequest
+from mizan.schemas.case import CaseCreate, CaseTemplate, DecisionRequest
 from mizan.services.regulations import get_regulation
 
 
@@ -46,6 +49,27 @@ async def get_case(session: AsyncSession, case_id: uuid.UUID) -> Case:
     if case is None:
         raise CaseNotFoundError(str(case_id))
     return case
+
+
+async def list_cases(session: AsyncSession, limit: int = 50) -> list[Case]:
+    rows = await session.scalars(select(Case).order_by(Case.created_at.desc()).limit(limit))
+    return list(rows)
+
+
+def load_templates(directory: Path) -> list[CaseTemplate]:
+    """Demo cases from JSON files. Keys starting with "_" are notes, except _expected."""
+    templates = []
+    for path in sorted(directory.glob("*.json")):
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        templates.append(
+            CaseTemplate(
+                id=path.stem,
+                title=raw["title"],
+                documents=raw["documents"],
+                expected=raw.get("_expected", {}),
+            )
+        )
+    return templates
 
 
 async def load_rules(session: AsyncSession) -> dict[str, Rules]:

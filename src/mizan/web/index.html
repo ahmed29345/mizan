@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mizan · Compliance Copilot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" class="scale"><path d="M16 5v22M9 27h14M6 9h20"/><path d="M6 9l-4 9h8zM26 9l-4 9h8z"/></g></svg>
+      <div><b>Mizan</b><small data-i18n="tagline">Compliance copilot</small></div>
+    </div>
+    <nav class="nav" aria-label="Main">
+      <a href="#ask" data-view="ask"><span data-i18n="navAsk">Ask the rules</span></a>
+      <a href="#library" data-view="library"><span data-i18n="navLibrary">Regulation library</span></a>
+      <a href="#review" data-view="review"><span data-i18n="navReview">Case review</span><span class="count" id="pendingCount" hidden></span></a>
+      <a href="#quality" data-view="quality"><span data-i18n="navQuality">AI quality</span></a>
+    </nav>
+    <div class="tenant" id="systemInfo"></div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <span class="demo" data-i18n="demoBadge">Demo · fictional regulations and cases</span>
+      <span class="spacer"></span>
+      <span class="health" id="health"></span>
+      <div class="seg" role="group" aria-label="Language">
+        <button id="langEn" aria-pressed="true">EN</button>
+        <button id="langAr" aria-pressed="false" lang="ar">عربي</button>
+      </div>
+    </div>
+
+    <!-- ASK -->
+    <section class="view" id="view-ask">
+      <div><h1 data-i18n="askTitle">Ask the rules</h1>
+        <p class="lede" data-i18n="askLede">Answers come only from the regulation library, with citations you can open. Every answer passes guardrails before you see it.</p></div>
+      <div class="cols">
+        <div class="card chatcard">
+          <div class="chat" id="chat"><p class="empty" data-i18n="askEmpty">Ask a question in English or Arabic, or try an example below.</p></div>
+          <form class="composer" id="askForm">
+            <div class="chips" id="askSamples"></div>
+            <div class="inputrow">
+              <input id="question" autocomplete="off" maxlength="1000" data-i18n-placeholder="askPlaceholder" placeholder="e.g. How fast must a bank report a cyber incident?">
+              <button class="btn primary" type="submit" id="askBtn" data-i18n="send">Ask</button>
+            </div>
+          </form>
+        </div>
+        <div class="side">
+          <div class="card"><header><h2 data-i18n="sources">Sources</h2></header><div id="sources"><p class="pad muted" data-i18n="sourcesEmpty">Click a citation to read the article.</p></div></div>
+          <div class="card"><header><h2 data-i18n="behind">Behind the scenes</h2></header><div id="behind"><p class="pad muted" data-i18n="behindEmpty">Steps, guardrails, model and timing for the last answer.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LIBRARY -->
+    <section class="view" id="view-library">
+      <div><h1 data-i18n="libTitle">Regulation library</h1>
+        <p class="lede" data-i18n="libLede">The rules Mizan answers from. Search works by meaning, across English and Arabic.</p></div>
+      <form class="card pad searchbar" id="searchForm">
+        <input id="searchQ" autocomplete="off" data-i18n-placeholder="searchPlaceholder" placeholder="Search by meaning, e.g. sending customer data abroad">
+        <button class="btn primary" type="submit" data-i18n="search">Search</button>
+      </form>
+      <div id="searchResults"></div>
+      <div class="reglist" id="regList"></div>
+    </section>
+
+    <!-- REVIEW -->
+    <section class="view" id="view-review">
+      <div><h1 data-i18n="revTitle">Case review</h1>
+        <p class="lede" data-i18n="revLede">Five AI agents check a product's documents against the regulations. A compliance officer approves the report or returns it with a comment.</p></div>
+      <div class="cols review">
+        <div class="card"><header><h2 data-i18n="cases">Cases</h2><span class="spacer"></span><button class="btn small" id="newCaseBtn" data-i18n="newDemo">New demo case</button></header><div id="caseList"></div></div>
+        <div id="caseDetail" class="stack"><div class="card pad muted" data-i18n="pickCase">Pick a case, or create a new demo case.</div></div>
+      </div>
+    </section>
+
+    <!-- QUALITY -->
+    <section class="view" id="view-quality">
+      <div><h1 data-i18n="qTitle">AI quality</h1>
+        <p class="lede" data-i18n="qLede">Results of the latest automatic evaluation: golden questions with known answers, including unanswerable questions and attacks.</p></div>
+      <div id="quality"></div>
+    </section>
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

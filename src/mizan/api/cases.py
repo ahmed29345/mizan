@@ -6,8 +6,15 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from langgraph.graph.state import CompiledStateGraph
 
+from mizan.config import get_settings
 from mizan.db import SessionDep
-from mizan.schemas.case import CaseCreate, CaseRead, DecisionRequest
+from mizan.schemas.case import (
+    CaseCreate,
+    CaseRead,
+    CaseSummary,
+    CaseTemplate,
+    DecisionRequest,
+)
 from mizan.services import cases as service
 
 router = APIRouter(prefix="/cases", tags=["cases"])
@@ -25,6 +32,24 @@ def _http_errors(error: Exception) -> HTTPException:
     if isinstance(error, service.CaseNotFoundError):
         return HTTPException(status.HTTP_404_NOT_FOUND, detail="Case not found")
     return HTTPException(status.HTTP_409_CONFLICT, detail=str(error))
+
+
+@router.get("")
+async def list_cases(session: SessionDep) -> list[CaseSummary]:
+    """Newest first, for the case list in the UI."""
+    return [
+        CaseSummary.model_validate(case).model_copy(
+            update={"risk_level": (case.report or {}).get("risk_level")}
+        )
+        for case in await service.list_cases(session)
+    ]
+
+
+@router.get("/templates")
+def list_templates() -> list[CaseTemplate]:
+    """Ready-made demo cases. A plain `def`: FastAPI runs it in a thread, so reading files
+    doesn't block the event loop (unlike blocking I/O inside `async def`)."""
+    return service.load_templates(get_settings().data_dir / "seed" / "cases")
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)

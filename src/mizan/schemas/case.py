@@ -72,3 +72,25 @@ class DecisionRequest(BaseModel):
         if self.decision == "return" and not (self.comment and self.comment.strip()):
             raise ValueError("A comment is required when returning a report")
         return self
+
+
+class CaseSummary(BaseModel):
+    """One row in the case list (no documents or full report)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    title: str
+    status: CaseStatus
+    revision: int
+    created_at: datetime
+    risk_level: str | None = None
+
+
+class CaseTemplate(BaseModel):
+    """A ready-made demo case (data/seed/cases/*.json), with the findings an expert expects."""
+
+    id: str
+    title: str
+    documents: list[CaseDocument]
+    expected: dict[str, str] = {}
