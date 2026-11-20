@@ -1,0 +1,143 @@
+"""The agent loop, built with LangGraph.
+
+        START
+          |
+          v
+     +----------+   always search the question first (guaranteed by code, not the prompt)
+     | retrieve |
+     +----------+
+          |
+          v
+      +-------+   tool calls?  yes   +-------+
+      | agent | -------------------> | tools |
+      +-------+ <------------------- +-------+
+          |         tool results
+          | no (final answer)
+          v
+         END
+
+- State: the list of messages so far (question, LLM replies, tool results).
+- retrieve node: runs search_regulations on the question BEFORE the LLM is involved, so the
+  model can never skip retrieval and answer from its own (outside) knowledge.
+- agent node: send the messages to the LLM; it replies with text OR with tool calls.
+- tools node: run the requested tools, append their results as ToolMessages.
+- The loop repeats until the LLM answers without tool calls, or the step limit is hit.
+"""
+
+import re
+import time
+
+from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.tools import BaseTool
+from langgraph.errors import GraphRecursionError
+from langgraph.graph import START, MessagesState, StateGraph
+from langgraph.graph.state import CompiledStateGraph
+from langgraph.prebuilt import ToolNode, tools_condition
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from mizan.agent.prompts import SYSTEM_PROMPT
+from mizan.agent.tools import RetrievalLog, build_tools
+from mizan.rag.embeddings import Embedder
+from mizan.schemas.ask import AskResponse, Citation, ToolCallLog
+
+# Matches citations like [DEMO-SAMA-CSF Art. 3.2] or [DEMO-PDPL Art 29]
+_CITATION = re.compile(r"\[([A-Z0-9][A-Z0-9-]*[A-Z0-9])\s+Art\.?\s*([0-9A-Za-z.\-]+?)\]")
+# Some models wrap private reasoning in <think>...</think>; never show it to users.
+_THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
+
+
+class AgentStepLimitError(Exception):
+    """The agent kept calling tools without reaching an answer."""
+
+
+def build_graph(llm: BaseChatModel, tools: list[BaseTool]) -> CompiledStateGraph:
+    # bind_tools: tell the model which tools exist (names, docstrings, argument schemas).
+    llm_with_tools = llm.bind_tools(tools)
+
+    async def agent(state: MessagesState) -> dict[str, list[AIMessage]]:
+        # The system prompt is added on every call but never stored in the state.
+        reply = await llm_with_tools.ainvoke([SystemMessage(SYSTEM_PROMPT), *state["messages"]])
+        return {"messages": [reply]}  # MessagesState APPENDS this to the list
+
+    search_tool = next(t for t in tools if t.name == "search_regulations")
+
+    async def retrieve(state: MessagesState) -> dict[str, list[AIMessage | ToolMessage]]:
+        question = str(state["messages"][-1].content)
+        call_id = "initial-search"
+        result = await search_tool.ainvoke({"query": question})
+        # Recorded as if the model had called the tool: chat APIs expect every tool result
+        # to follow a tool call, and the audit log shows this search like any other.
+        return {
+            "messages": [
+                AIMessage(
+                    content="",
+                    tool_calls=[
+                        {"name": search_tool.name, "args": {"query": question}, "id": call_id}
+                    ],
+                ),
+                ToolMessage(content=result, tool_call_id=call_id),
+            ]
+        }
+
+    graph = StateGraph(MessagesState)
+    graph.add_node("retrieve", retrieve)
+    graph.add_node("agent", agent)
+    graph.add_node("tools", ToolNode(tools))  # runs whatever tools the last reply asked for
+    graph.add_edge(START, "retrieve")
+    graph.add_edge("retrieve", "agent")
+    # tools_condition: last reply has tool calls -> "tools", otherwise -> END.
+    graph.add_conditional_edges("agent", tools_condition)
+    graph.add_edge("tools", "agent")  # after tools, always go back to the LLM
+    return graph.compile()
+
+
+def extract_citations(answer: str, retrieved: set[tuple[str, str]]) -> list[Citation]:
+    seen: dict[tuple[str, str], Citation] = {}
+    for code, number in _CITATION.findall(answer):
+        key = (code, number.rstrip("."))
+        if key not in seen:
+            seen[key] = Citation(
+                regulation_code=key[0], article_number=key[1], verified=key in retrieved
+            )
+    return list(seen.values())
+
+
+async def answer_question(
+    question: str,
+    *,
+    session: AsyncSession,
+    embedder: Embedder,
+    llm: BaseChatModel,
+    max_steps: int,
+) -> AskResponse:
+    started = time.perf_counter()
+    log = RetrievalLog()
+    graph = build_graph(llm, build_tools(session, embedder, log))
+
+    try:
+        # Graph steps for N LLM turns: retrieve (1) + N agent turns + (N - 1) tool rounds
+        # between them = 2N. So a limit of 2 * max_steps allows exactly max_steps LLM turns.
+        final = await graph.ainvoke(
+            {"messages": [HumanMessage(question)]},
+            config={"recursion_limit": max_steps * 2},
+        )
+    except GraphRecursionError as error:
+        raise AgentStepLimitError(f"No answer within {max_steps} LLM turns") from error
+
+    messages = final["messages"]
+    ai_messages = [m for m in messages if isinstance(m, AIMessage)]
+    answer = _THINK.sub("", str(ai_messages[-1].content)).strip()
+    return AskResponse(
+        question=question,
+        answer=answer,
+        citations=extract_citations(answer, log.articles),
+        tool_calls=[
+            ToolCallLog(tool=call["name"], args=call["args"])
+            for message in ai_messages
+            for call in message.tool_calls
+        ],
+        model=getattr(llm, "model", type(llm).__name__),
+        llm_turns=len(ai_messages) - 1,  # minus the synthetic message from `retrieve`
+        duration_ms=round((time.perf_counter() - started) * 1000),
+    )

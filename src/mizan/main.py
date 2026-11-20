@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from mizan.api import health, regulations, search
+from mizan.api import ask, health, regulations, search
 from mizan.db import engine
 
 
@@ -21,3 +21,4 @@ app = FastAPI(title="Mizan", version="0.1.0", lifespan=lifespan)
 app.include_router(health.router)
 app.include_router(regulations.router)
 app.include_router(search.router)
+app.include_router(ask.router)

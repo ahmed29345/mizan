@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     embedding_model: str = "bge-m3"  # multilingual (Arabic + English), 1024 dimensions
     embedding_batch_size: int = 32  # texts per request to the model
 
+    # Chat LLM for the agent (week 2). Local via Ollama; swap for a hosted model later.
+    llm_model: str = "qwen3:8b"
+    agent_max_steps: int = 6  # max LLM turns per question: stops runaway tool loops (and cost)
+
 
 @lru_cache
 def get_settings() -> Settings:
