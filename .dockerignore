@@ -1,0 +1,22 @@
+# Keep the build context small and secrets OUT of the image.
+.git
+.github
+.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+.DS_Store
+.vscode
+.idea
+
+# Secrets: never copied into any image layer.
+.env
+.env.*
+
+# Not needed to run the app.
+tests
+prototype
+data/eval/results
+docker-compose*.yml
+Dockerfile

@@ -8,14 +8,13 @@ It goes through the SAME service as the API, so seed data gets the same validati
 
 import asyncio
 import json
-from pathlib import Path
 
+from mizan.config import get_settings
 from mizan.db import SessionLocal, engine
 from mizan.schemas.regulation import RegulationCreate
 from mizan.services.regulations import DuplicateRegulationError, create_regulation
 
-# src/mizan/seed.py -> parents[2] is the repository root.
-SEED_FILE = Path(__file__).resolve().parents[2] / "data" / "seed" / "regulations.json"
+SEED_FILE = get_settings().data_dir / "seed" / "regulations.json"
 
 
 async def seed() -> None:

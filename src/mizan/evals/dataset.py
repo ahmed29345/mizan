@@ -5,9 +5,10 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from mizan.config import get_settings
 from mizan.models import Language
 
-GOLDEN_FILE = Path(__file__).resolve().parents[3] / "data" / "eval" / "golden.jsonl"
+GOLDEN_FILE = get_settings().data_dir / "eval" / "golden.jsonl"
 
 Category = Literal["direct", "paraphrase", "multi", "unanswerable", "attack"]
 

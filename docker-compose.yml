@@ -1,4 +1,18 @@
-# Local development services. Start with:  docker compose up -d
+# Local development services.
+#   docker compose up -d                        -> database only (normal development)
+#   docker compose --profile app up -d --build  -> also the API in Docker, on 127.0.0.1:8080
+
+x-app: &app
+  build: .
+  image: mizan:local
+  profiles: ["app"]  # only started when asked for with --profile app
+  environment: &app-env
+    # Inside Docker, "db" is the database service's hostname (not localhost).
+    DATABASE_URL: postgresql+asyncpg://mizan:mizan@db:5432/mizan
+    # Ollama runs on the Mac itself; host.docker.internal reaches the host from a container.
+    OLLAMA_URL: http://host.docker.internal:11434
+    ENVIRONMENT: docker
+
 services:
   db:
     # Official Postgres 17 with the pgvector extension pre-built (used for embeddings from week 3).
@@ -19,6 +33,27 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  migrate:
+    <<: *app
+    # One-off job: bring the schema up to date, then exit. Runs BEFORE the API starts.
+    # (Not done inside the API's startup: with several API copies, they would all race.)
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully  # never serve traffic on an old schema
+    ports:
+      - "127.0.0.1:8080:8000"  # 8080 on the Mac, so it can't clash with `fastapi dev` on 8000
+    restart: unless-stopped
 
 volumes:
   pgdata:

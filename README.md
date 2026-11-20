@@ -28,6 +28,18 @@ Ask the agent over HTTP: `POST /ask` with `{"question": "..."}` (try it at /docs
 
 Try semantic search: http://127.0.0.1:8000/search?q=How%20fast%20must%20a%20bank%20report%20a%20hack
 
+## Run the API in Docker (production image)
+
+```bash
+docker compose --profile app up -d --build   # builds the image, runs migrations, starts the API
+curl http://127.0.0.1:8080/health
+docker compose --profile app stop api        # stop it again (the database keeps running)
+```
+
+The image (see `Dockerfile`) is multi-stage, runs as a non-root user, contains no tests or
+secrets, and gets all settings from environment variables. Migrations run as a separate
+one-off `migrate` job before the API starts. CI builds the image and checks `/health`.
+
 ## Observability (optional): Langfuse traces
 
 Every agent run can be recorded as a trace: each step, prompt, answer, tool call, guardrail

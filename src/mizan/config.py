@@ -5,6 +5,7 @@ A missing or wrongly-typed value fails at startup, not in the middle of a reques
 """
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -14,6 +15,10 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://mizan:mizan@localhost:5432/mizan"
     environment: str = "local"
+    # Folder with seed data and eval sets. Relative = from the working directory: the repo
+    # root locally, /app in the Docker image. (Not derived from __file__: inside the image
+    # the code is an installed package in .venv/site-packages, far from the data.)
+    data_dir: Path = Path("data")
 
     # Embeddings (week 3). Served locally by Ollama: free, private, no API key.
     ollama_url: str = "http://localhost:11434"
