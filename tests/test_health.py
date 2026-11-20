@@ -49,3 +49,11 @@ def test_health_db_down(client: TestClient, database_down: None) -> None:
 
     assert response.status_code == 503
     assert response.json() == {"status": "degraded", "database": "unreachable"}
+
+
+def test_livez_does_not_depend_on_the_database(client: TestClient, database_down: None) -> None:
+    # Even with the database "down", liveness stays OK: restarting the pod wouldn't help.
+    response = client.get("/livez")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "alive"}

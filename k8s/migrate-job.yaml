@@ -1,0 +1,42 @@
+# One-off Job: bring the database schema up to date, then stop.
+# deploy.sh runs it and WAITS for it to complete before rolling out the API, so the API
+# never runs against an old schema (same rule as the compose `migrate` service).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mizan-migrate
+  labels:
+    app.kubernetes.io/component: migrate
+spec:
+  backoffLimit: 2  # retry a failed migration at most twice, then report failure
+  ttlSecondsAfterFinished: 3600  # clean the finished Job up after an hour
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: Never
+      securityContext: &pod-security
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: mizan:local
+          imagePullPolicy: IfNotPresent  # the image is loaded into kind, not in a registry
+          command: ["alembic", "upgrade", "head"]
+          envFrom:
+            - configMapRef:
+                name: mizan-config
+            - secretRef:
+                name: mizan-secrets
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }

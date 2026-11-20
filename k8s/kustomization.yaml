@@ -1,0 +1,34 @@
+# Kustomize (built into kubectl): `kubectl apply -k k8s/` renders and applies everything here.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: mizan
+labels:
+  - pairs:
+      app.kubernetes.io/name: mizan
+    includeTemplates: false
+
+resources:
+  - namespace.yaml
+  - external-services.yaml
+  - migrate-job.yaml
+  - api.yaml
+
+# Plain settings -> a ConfigMap. The name gets a hash of the content (mizan-config-abc123),
+# so changing a value creates a NEW ConfigMap and Kubernetes rolls the pods automatically.
+configMapGenerator:
+  - name: mizan-config
+    literals:
+      - ENVIRONMENT=kubernetes
+      # Full service name, not just "ollama": Ollama rejects requests whose Host header isn't
+      # localhost / *.local / *.internal (DNS-rebinding protection) and answers 403.
+      - OLLAMA_URL=http://ollama.mizan.svc.cluster.local:11434
+      - LLM_MODEL=qwen3:8b
+      - EMBEDDING_MODEL=bge-m3
+      - AGENT_MAX_STEPS=6
+
+# Passwords -> a Secret, from a local file that is NOT committed (see secrets.env.example).
+# In production, secrets come from a vault (e.g. AWS Secrets Manager via External Secrets).
+secretGenerator:
+  - name: mizan-secrets
+    envs:
+      - secrets.env

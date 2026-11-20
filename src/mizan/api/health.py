@@ -40,3 +40,15 @@ async def health(session: SessionDep) -> dict[str, str]:
 
     # Returning a dict -> FastAPI turns it into JSON with status 200.
     return {"status": "ok", "database": "ok"}
+
+
+@router.get("/livez")
+async def livez() -> dict[str, str]:
+    """Liveness: "is this process alive and able to answer?" - for Kubernetes' livenessProbe.
+
+    Deliberately checks NOTHING outside the process. If it checked the database, a database
+    outage would make Kubernetes restart every API pod in a loop, which can't fix the
+    database and only adds churn. Use /health (database check) for the readinessProbe:
+    a pod that can't reach the database simply stops receiving traffic until it can.
+    """
+    return {"status": "alive"}

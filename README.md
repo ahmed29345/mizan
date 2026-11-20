@@ -40,6 +40,21 @@ The image (see `Dockerfile`) is multi-stage, runs as a non-root user, contains n
 secrets, and gets all settings from environment variables. Migrations run as a separate
 one-off `migrate` job before the API starts. CI builds the image and checks `/health`.
 
+## Run on Kubernetes (local cluster with kind)
+
+```bash
+brew install kind kubernetes-cli
+kind create cluster --name mizan
+cp k8s/secrets.env.example k8s/secrets.env      # first time only
+k8s/deploy.sh                                   # build, load, migrate, roll out (2 replicas)
+kubectl -n mizan port-forward svc/mizan-api 8090:80   # then http://127.0.0.1:8090/health
+kind delete cluster --name mizan                # remove it when done (frees ~1 GB RAM)
+```
+
+Postgres and Ollama stay on the Mac and are reached through `ExternalName` services, like a
+managed database in production. Probes: `/livez` (liveness, no database check) and
+`/health` (readiness, checks the database). Pods run as non-root with a read-only filesystem.
+
 ## Observability (optional): Langfuse traces
 
 Every agent run can be recorded as a trace: each step, prompt, answer, tool call, guardrail

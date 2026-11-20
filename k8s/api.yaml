@@ -1,0 +1,115 @@
+# The API: a Deployment (keeps N healthy pods running), a Service (one stable address that
+# load-balances across them) and a PodDisruptionBudget (never take all pods down at once).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mizan-api
+  labels:
+    app.kubernetes.io/component: api
+spec:
+  replicas: 2  # two copies: one can crash or be replaced while the other keeps serving
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mizan
+      app.kubernetes.io/component: api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # start 1 new pod first...
+      maxUnavailable: 0  # ...and only remove an old pod once the new one is READY: zero downtime
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mizan
+        app.kubernetes.io/component: api
+    spec:
+      securityContext:
+        runAsNonRoot: true  # Kubernetes refuses to start the pod if the image would run as root
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault  # block unusual Linux system calls
+      # Long /ask requests (10-30s with a local LLM) get time to finish on shutdown.
+      terminationGracePeriodSeconds: 45
+      containers:
+        - name: api
+          image: mizan:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: mizan-config  # plain settings
+            - secretRef:
+                name: mizan-secrets  # passwords (DATABASE_URL)
+          # STARTUP: give the app up to 60s to start (opens DB pool + checkpointer) before
+          # the other probes begin. Without it, a slow start could be killed as "dead".
+          startupProbe:
+            httpGet: { path: /livez, port: http }
+            periodSeconds: 2
+            failureThreshold: 30
+          # LIVENESS: "is the process stuck?" -> restart it. Must NOT check the database
+          # (a DB outage would otherwise restart every pod in a loop).
+          livenessProbe:
+            httpGet: { path: /livez, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          # READINESS: "can it serve requests?" -> checks the DB via /health. When it fails,
+          # the pod is only REMOVED FROM THE SERVICE (no traffic), not restarted.
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          lifecycle:
+            # On shutdown, wait 5s before stopping so the Service stops sending new
+            # requests to this pod first (avoids errors during rolling updates).
+            preStop:
+              exec:
+                command: ["sleep", "5"]
+          # requests = what the scheduler reserves; limits = the hard ceiling.
+          # Over the memory limit the container is killed (OOMKilled), so size from measurements.
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: "1", memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true  # nothing in the container can be modified at all
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp  # the only writable place, wiped when the pod goes away
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mizan-api
+  labels:
+    app.kubernetes.io/component: api
+spec:
+  selector:  # sends traffic only to READY pods with these labels
+    app.kubernetes.io/name: mizan
+    app.kubernetes.io/component: api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mizan-api
+  labels:
+    app.kubernetes.io/component: api
+spec:
+  minAvailable: 1  # voluntary disruptions (node maintenance) must leave at least 1 pod up
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mizan
+      app.kubernetes.io/component: api

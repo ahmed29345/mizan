@@ -25,3 +25,6 @@ data/raw/
 
 # Evaluation run outputs (large, machine-specific)
 data/eval/results/
+
+# Kubernetes secrets (k8s/secrets.env.example is the committed template)
+k8s/secrets.env

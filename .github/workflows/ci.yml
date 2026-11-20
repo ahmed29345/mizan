@@ -83,6 +83,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Kubernetes manifests render
+        # Catches broken YAML / Kustomize errors on every push (kubectl is on the runner).
+        # The real secrets file is git-ignored, so render with the committed example.
+        run: |
+          cp k8s/secrets.env.example k8s/secrets.env
+          kubectl kustomize k8s/ > /dev/null
+
       - uses: docker/setup-buildx-action@v3
 
       - name: Build image

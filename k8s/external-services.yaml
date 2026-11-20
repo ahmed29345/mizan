@@ -1,0 +1,19 @@
+# Services the app needs that run OUTSIDE the cluster.
+# The app always connects to "postgres" and "ollama". Here those names point at the Mac
+# (host.docker.internal). In production you would point the same names at a managed
+# database (e.g. an AWS RDS endpoint) and a model server, without touching the app.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  type: ExternalName
+  externalName: host.docker.internal
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+spec:
+  type: ExternalName
+  externalName: host.docker.internal

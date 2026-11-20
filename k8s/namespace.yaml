@@ -1,0 +1,5 @@
+# A namespace groups all of Mizan's objects, so they can be listed, limited and deleted together.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mizan
