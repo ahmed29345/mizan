@@ -13,7 +13,9 @@ dependencies = [
     "fastapi[standard]>=0.162.4",
     "langchain-ollama>=1.1.0",
     "langgraph>=1.2.24",
+    "langgraph-checkpoint-postgres>=3.2.1",
     "pgvector>=0.5.1",
+    "psycopg[binary]>=3.3.9",
     "pydantic-settings>=2.16.2",
     "sqlalchemy[asyncio]>=2.1.8",
 ]

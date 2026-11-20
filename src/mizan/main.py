@@ -5,14 +5,19 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from mizan.api import ask, health, regulations, search
+from mizan.agent.llm import get_chat_model
+from mizan.api import ask, cases, health, regulations, search
 from mizan.db import engine
+from mizan.review.checkpointer import postgres_checkpointer
+from mizan.review.graph import build_review_graph
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    # Startup code goes before `yield` (e.g. warm caches, load models in later weeks).
-    yield
+    # Startup: open the checkpointer (where paused reviews live) and build the review graph once.
+    async with postgres_checkpointer() as checkpointer:
+        app.state.review_graph = build_review_graph(get_chat_model(), checkpointer)
+        yield
     # Shutdown: close every pooled database connection cleanly.
     await engine.dispose()
 
@@ -22,3 +27,4 @@ app.include_router(health.router)
 app.include_router(regulations.router)
 app.include_router(search.router)
 app.include_router(ask.router)
+app.include_router(cases.router)

@@ -23,6 +23,19 @@ if config.config_file_name is not None:
 # The "desired state": every table defined by our models.
 target_metadata = Base.metadata
 
+
+def include_object(
+    obj: object, name: str | None, type_: str, reflected: bool, compare_to: object
+) -> bool:
+    """Tell autogenerate / `alembic check` to ignore tables we don't own.
+
+    LangGraph's Postgres checkpointer creates its own tables (checkpoints, checkpoint_writes...)
+    to save paused graphs. Without this filter, Alembic would see them as "not in our models"
+    and try to DROP them in the next migration.
+    """
+    return not (type_ == "table" and reflected and (name or "").startswith("checkpoint"))
+
+
 # One source of truth for the URL: .env locally, environment variables in CI / production.
 DATABASE_URL = get_settings().database_url
 
@@ -32,6 +45,7 @@ def run_migrations_offline() -> None:
     context.configure(
         url=DATABASE_URL,
         target_metadata=target_metadata,
+        include_object=include_object,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -40,7 +54,9 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection, target_metadata=target_metadata, include_object=include_object
+    )
     with context.begin_transaction():
         context.run_migrations()
 

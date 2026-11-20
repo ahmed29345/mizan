@@ -3,13 +3,15 @@
 import math
 import re
 import zlib
+from collections import defaultdict
 from collections.abc import Sequence
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
-from pydantic import Field, field_validator
+from langchain_core.runnables import RunnableLambda
+from pydantic import BaseModel, Field, field_validator
 
 from mizan.models import EMBEDDING_DIMENSIONS
 from mizan.rag.embeddings import EmbeddingError
@@ -95,3 +97,27 @@ class ScriptedChatModel(BaseChatModel):
 def tool_call(name: str, call_id: str = "call-1", **args: Any) -> AIMessage:
     """An AIMessage in which the 'model' asks to run one tool."""
     return AIMessage(content="", tool_calls=[{"name": name, "args": args, "id": call_id}])
+
+
+class FakeStructuredModel:
+    """Fake LLM for multi-agent tests: answers by the agent's ROLE, not by call order.
+
+    The three checkers run in PARALLEL, so the order of calls is not fixed; routing by the
+    "ROLE: ..." first line of the system prompt makes each agent's answer deterministic.
+    `outputs[role]` is a list used in order for repeated calls (e.g. the writer's revision).
+    """
+
+    def __init__(self, outputs: dict[str, list[BaseModel]]) -> None:
+        self.outputs = outputs
+        self.calls: dict[str, list[list[BaseMessage]]] = defaultdict(list)
+
+    def with_structured_output(self, schema: type[BaseModel]) -> RunnableLambda:
+        async def respond(messages: list[BaseMessage]) -> BaseModel:
+            role = str(messages[0].content).split("\n", 1)[0].removeprefix("ROLE: ")
+            self.calls[role].append(messages)
+            replies = self.outputs[role]
+            reply = replies[min(len(self.calls[role]), len(replies)) - 1]
+            assert isinstance(reply, schema), f"{role}: expected {schema.__name__}"
+            return reply
+
+        return RunnableLambda(respond)

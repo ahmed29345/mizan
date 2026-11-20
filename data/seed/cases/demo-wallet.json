@@ -1,0 +1,21 @@
+{
+  "_note": "FICTIONAL product for development and tests. Issues are planted on purpose; see _expected.",
+  "_expected": {
+    "DEMO-SAMA-CSF 1.1": "compliant (licensed bank in the Kingdom)",
+    "DEMO-SAMA-CSF 2.1": "non_compliant (security manager reports to the CIO, not independent of IT)",
+    "DEMO-SAMA-CSF 3.2": "non_compliant (72 hours instead of 24)",
+    "DEMO-PDPL 5": "non_compliant (single terms box, no consent for marketing use)",
+    "DEMO-PDPL 12": "non_compliant (salary, employer, family names collected for marketing)",
+    "DEMO-PDPL 29": "non_compliant (stored in Frankfurt, no transfer assessment)",
+    "DEMO-ZATCA-EINV 1": "compliant (issues tax invoices, so in scope)",
+    "DEMO-ZATCA-EINV 4": "non_compliant (no QR code)",
+    "DEMO-ZATCA-EINV 7": "non_compliant (five years, and editable)"
+  },
+  "title": "DEMO Wallet (fictional) - launch compliance review",
+  "documents": [
+    {"name": "Product overview", "text": "DEMO Wallet is a mobile wallet for retail customers of a licensed bank operating in the Kingdom. Customers sign up with their national ID number, mobile phone number and date of birth. During onboarding the app also asks for the customer's monthly salary, employer name and the names of their family members, which the marketing team uses for campaign analysis. Customers tick a single box accepting the general terms and conditions; there is no separate consent for using personal data for marketing."},
+    {"name": "Data and hosting", "text": "Customer profiles and transaction history are stored with a cloud provider in Frankfurt, Germany, to reduce hosting costs. Backups are kept in the same region. No assessment of the conditions for transferring personal data outside the Kingdom has been carried out yet."},
+    {"name": "Security operations", "text": "Security monitoring for the wallet is run by the IT operations team. The information security manager reports to the Chief Information Officer. Significant cyber incidents are reported to the regulator within 72 hours of detection. The board approved the bank's cyber security strategy in 2024."},
+    {"name": "Merchant invoicing", "text": "Merchants who accept DEMO Wallet receive a monthly tax invoice showing the bank's VAT number, the invoice date and a sequential invoice number. Invoices are kept for five years in the finance system, where finance staff can edit them if needed."}
+  ]
+}

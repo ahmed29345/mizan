@@ -37,3 +37,25 @@ async def make_indexed_regulation(
     )
     await index_regulation(session, embedder, code)
     return code
+
+
+async def make_demo_regulations(session: AsyncSession) -> None:
+    """Small versions of the three regulations the review checkers are wired to (AREAS)."""
+    from mizan.review.graph import AREAS
+
+    articles = {"cyber": ["1.1", "3.2"], "data": ["5"], "invoice": ["4"]}
+    for area, (code, topic) in AREAS.items():
+        await create_regulation(
+            session,
+            RegulationCreate(
+                code=code,
+                authority="SAMA",
+                title_en=f"Test {topic} rules",
+                articles=[
+                    ArticleCreate(
+                        article_number=n, language=Language.EN, body=f"Rule {n}.", position=i
+                    )
+                    for i, n in enumerate(articles[area])
+                ],
+            ),
+        )
