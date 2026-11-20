@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://mizan:mizan@localhost:5432/mizan"
     environment: str = "local"
 
+    # Embeddings (week 3). Served locally by Ollama: free, private, no API key.
+    ollama_url: str = "http://localhost:11434"
+    embedding_model: str = "bge-m3"  # multilingual (Arabic + English), 1024 dimensions
+    embedding_batch_size: int = 32  # texts per request to the model
+
 
 @lru_cache
 def get_settings() -> Settings:

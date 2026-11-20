@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+import pgvector.sqlalchemy  # autogenerate uses it for vector columns; ruff removes it if unused
 ${imports if imports else ""}
 
 # revision identifiers, used by Alembic.

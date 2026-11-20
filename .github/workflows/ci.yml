@@ -40,10 +40,6 @@ jobs:
       - name: Install dependencies (exactly as locked)
         run: uv sync --locked
 
-      - name: Enable pgvector
-        # Service containers can't mount init.sql, so enable the extension here instead.
-        run: PGPASSWORD=mizan psql -h localhost -U mizan -d mizan -c "CREATE EXTENSION IF NOT EXISTS vector;"
-
       - name: Apply database migrations
         run: uv run alembic upgrade head
 
@@ -58,4 +54,5 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Tests
+        # Creates and migrates its own mizan_test database. Uses a fake embedder: no Ollama in CI.
         run: uv run pytest
